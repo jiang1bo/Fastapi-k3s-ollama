@@ -1,0 +1,11 @@
+# FastAPI 提供 HTTP API 和静态网页服务。
+fastapi>=0.115,<1.0
+
+# Uvicorn 作为容器内的 ASGI HTTP 服务器。
+uvicorn[standard]>=0.30,<1.0
+
+# HTTPX 用于异步调用 k3s 集群内的 Ollama Service。
+httpx>=0.27,<1.0
+
+# Prometheus 官方客户端用于导出请求和 token 指标。
+prometheus-client>=0.20,<1.0

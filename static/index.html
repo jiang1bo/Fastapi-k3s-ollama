@@ -1,0 +1,56 @@
+<!doctype html>
+<!-- 声明简体中文页面，让浏览器按 UTF-8 正确显示中文对话。 -->
+<html lang="zh-CN">
+<head>
+    <!-- UTF-8 避免模型回答和用户输入在网页中出现乱码。 -->
+    <meta charset="utf-8">
+    <!-- 让同一页面在桌面浏览器和手机屏幕上都能正常布局。 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>k3s 本地模型实验室</title>
+    <!-- 样式和脚本由 FastAPI 静态目录直接提供。 -->
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <main class="app">
+        <!-- 顶栏显示模型选择器和服务当前状态。 -->
+        <header class="header">
+            <div>
+                <h1>k3s 本地模型实验室</h1>
+                <p>通过 Ollama 在本地 CPU 上运行模型</p>
+            </div>
+            <label class="model-picker" for="model-select">
+                模型
+                <select id="model-select" disabled>
+                    <option>正在读取 Ollama 模型...</option>
+                </select>
+            </label>
+        </header>
+
+        <!-- 对话内容使用 textContent 更新，模型输出不会被当作 HTML 执行。 -->
+        <section id="chat-box" class="chat-box" aria-live="polite">
+            <article class="message assistant">
+                <strong class="role">AI</strong>
+                <div class="content">请选择已下载的模型，开始本地推理实验。</div>
+            </article>
+        </section>
+
+        <!-- 表单在模型目录载入前保持禁用，避免向未就绪服务发送请求。 -->
+        <form id="chat-form" class="input-area">
+            <textarea
+                id="message-input"
+                aria-label="问题"
+                placeholder="输入问题；Enter 发送，Shift + Enter 换行"
+                rows="3"
+                disabled
+            ></textarea>
+            <button id="send-button" type="submit" disabled>发送</button>
+        </form>
+
+        <!-- 当前模型、耗时和 token 计数展示在页面底部。 -->
+        <footer id="status" class="status" role="status">正在连接服务...</footer>
+    </main>
+
+    <!-- defer 确保 DOM 创建完成后再绑定表单和按钮事件。 -->
+    <script src="/app.js" defer></script>
+</body>
+</html>

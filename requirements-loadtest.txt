@@ -1,0 +1,2 @@
+# Locust 只用于压测客户端，不安装进 FastAPI 或 Ollama 容器。
+locust>=2.32,<3.0

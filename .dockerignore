@@ -1,0 +1,14 @@
+# 构建上下文只包含应用源码，避免把密钥、虚拟环境或模型权重打进镜像。
+.env
+.venv
+venv
+__pycache__
+*.py[cod]
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.gguf
+.git
+loadtest
+tests

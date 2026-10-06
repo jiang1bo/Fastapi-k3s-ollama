@@ -1,0 +1,113 @@
+# FastAPI 应用连接同一 namespace 中现有的 ollama-internal Service。
+# Ollama Deployment、模型 PVC 均保持独立，不会被此清单修改。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ollama-chat-config
+  namespace: local-ai
+data:
+  # 这是已确认存在的 k3s Service DNS 名称，不使用虚拟机 localhost。
+  OLLAMA_BASE_URL: "http://ollama-internal.local-ai.svc.cluster.local:11434"
+  # 只把已安装的小模型列入白名单；下载其他模型后再追加标签。
+  OLLAMA_MODELS: "qwen2.5:0.5b"
+  # CPU VM 使用较短上下文和输出长度，减轻推理耗时和内存压力。
+  OLLAMA_NUM_CTX: "2048"
+  MAX_NEW_TOKENS: "128"
+  MAX_HISTORY_MESSAGES: "10"
+  MAX_CONCURRENT_REQUESTS: "1"
+  OLLAMA_TIMEOUT_SECONDS: "600"
+  OLLAMA_KEEP_ALIVE: "5m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama-chat
+  namespace: local-ai
+  labels:
+    app.kubernetes.io/name: ollama-chat
+spec:
+  # 一个 API 副本与单并发推理相配，避免压测时无意中叠加 CPU 工作负载。
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ollama-chat
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ollama-chat
+    spec:
+      containers:
+        - name: api
+          # 构建并导入到 k3s containerd 后使用此本地镜像标签。
+          image: k3s-ollama-chat:0.1.0
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: ollama-chat-config
+          # 就绪探针依赖集群内 Ollama，避免后端不可用时接收聊天流量。
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # 存活探针仅检查 API 进程，短暂推理故障不会造成重启风暴。
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 3
+          # Python API 自身资源保持较小；主要 CPU/内存消耗来自 Ollama Pod。
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama-chat
+  namespace: local-ai
+  labels:
+    app.kubernetes.io/name: ollama-chat
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: ollama-chat
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      nodePort: 30800
+---
+# 已检查现有 Prometheus Operator 的 ServiceMonitor 标签选择器为 release=prometheus。
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ollama-chat
+  namespace: local-ai
+  labels:
+    release: prometheus
+spec:
+  namespaceSelector:
+    matchNames:
+      - local-ai
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ollama-chat
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
