@@ -39,7 +39,7 @@ spec:
       containers:
         - name: api
           # 构建并导入到 k3s containerd 后使用此本地镜像标签。
-          image: k3s-ollama-chat:0.1.0
+          image: localhost/k3s-ollama-chat:0.1.1
           imagePullPolicy: Never
           ports:
             - name: http
